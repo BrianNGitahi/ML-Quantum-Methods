@@ -12,4 +12,5 @@ dependencies:
   - pytorch
   - pip
   - pip:
+      - netket
       - -e .
