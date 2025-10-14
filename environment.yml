@@ -12,5 +12,9 @@ dependencies:
   - pytorch
   - pip
   - pip:
+      - qiskit[visualization]
+      - qiskit-ibm-runtime 
+      - qiskit-nature 
+      - pyscf         
       - netket
       - -e .
