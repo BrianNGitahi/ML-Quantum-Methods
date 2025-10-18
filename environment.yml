@@ -15,6 +15,7 @@ dependencies:
       - qiskit[visualization]
       - qiskit-ibm-runtime 
       - qiskit-nature 
-      - pyscf         
+      - pyscf
+      - qutip         
       - netket
       - -e .
