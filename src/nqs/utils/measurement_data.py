@@ -2,7 +2,16 @@ import numpy as np
 from typing import List, Tuple
 from qiskit.quantum_info import Statevector, SparsePauliOp
 from qiskit.quantum_info import Operator
+from typing import Tuple, List
 
+# for QC part
+# from qiskit_nature.drivers import Molecule
+# from qiskit_nature.drivers.second_quantization import ElectronicStructureDriverType, ElectronicStructureMoleculeDriver
+# from qiskit_nature.problems.second_quantization import ElectronicStructureProblem
+# from qiskit_nature.converters.second_quantization import QubitConverter
+# from qiskit_nature.mappers.second_quantization import ParityMapper
+
+# Code to make the dataset
 class MeasurementDatasetGenerator:
     """
     Generate synthetic measurement datasets for quantum state tomography.
@@ -289,6 +298,54 @@ class MeasurementDatasetGenerator:
         
         print(f"Loaded {len(dataset)} measurements from {filename}")
         return dataset
+    
+    
+# code to load the dataset
+
+# get the training data made by separate script
+
+def load_and_prepare_for_training(filename: str, spin_notation: bool = False) -> Tuple[list, list]:
+    """
+    Load measurement dataset and convert to training format (sigma_s, Us).
+    
+    Args:
+        filename: Path to dataset file (e.g., "measurements.txt")
+        spin_notation: If True, outcomes are {-1,+1}. If False, {0,1}
+    
+    Returns:
+        (sigma_s, Us) where:
+            sigma_s: List of measurement outcomes as numpy arrays
+            Us: List of measurement bases (e.g., ['X', 'Z', 'Y'])
+    
+    Example:
+        >>> sigma_s, Us = load_and_prepare_for_training("data.txt")
+        >>> print(sigma_s[0])  # First outcome: [0, 1, 0, 1]
+        >>> print(Us[0])       # First bases: ['X', 'Z', 'Z', 'Y']
+    """
+    sigma_s = []
+    Us = []
+    
+    with open(filename, 'r') as f:
+        for line in f:
+            bases_str, outcome_str = line.strip().split()
+            
+            # Convert outcome string to array: "0101" -> [0, 1, 0, 1]
+            outcome = np.array([int(bit) for bit in outcome_str])
+            
+            # Convert to spin notation if requested: 0->+1, 1->-1
+            if spin_notation:
+                outcome = 1 - 2 * outcome
+            
+            # Convert bases string to list: "XZZY" -> ['X', 'Z', 'Z', 'Y']
+            #bases = list(bases_str) - netket complained about this
+            
+            sigma_s.append(outcome)
+            Us.append(bases_str)
+    
+    print(f"Loaded {len(sigma_s)} measurements from {filename}")
+    print(f"Format: {'spin {-1,+1}' if spin_notation else 'binary {0,1}'}")
+    
+    return np.array(sigma_s), Us
 
 
 # ============================================================================
@@ -366,6 +423,69 @@ def example_4qubit_hamiltonian():
     
     # Save dataset
     generator.save_dataset(dataset, "4qubit_measurements.txt")
+    
+    return generator, dataset
+
+
+# ============================================================================
+# QC EXAMPLE 
+# ============================================================================
+
+
+
+
+def example_beh2_molecule():
+    """
+    Example: Generate measurement dataset for BeH2 molecule.
+    """
+    
+    print("Setting up BeH2 molecule...")
+    
+    # Define molecule geometry
+    molecule = Molecule(
+        geometry=[
+            ['Be', [0., 0., 0.]],
+            ['H', [0., 0., 1.3]],
+            ['H', [0., 0., -1.3]]
+        ],
+        charge=0,
+        multiplicity=1
+    )
+    
+    # Get electronic structure
+    driver = ElectronicStructureMoleculeDriver(
+        molecule,
+        basis='sto3g',
+        driver_type=ElectronicStructureDriverType.PYSCF
+    )
+    
+    problem = ElectronicStructureProblem(driver)
+    
+    # Convert to qubit Hamiltonian
+    converter = QubitConverter(ParityMapper(), two_qubit_reduction=True)
+    qubit_op = converter.convert(problem.second_q_ops()[0])
+    
+    print(f"Qubit Hamiltonian has {len(qubit_op)} terms")
+    
+    # Get ground state (using exact diagonalization for this example)
+    from qiskit.algorithms import NumPyEigensolver
+    solver = NumPyEigensolver(k=1)
+    result = solver.compute_eigenvalues(qubit_op)
+    
+    ground_state = result.eigenstates[0]
+    ground_energy = result.eigenvalues[0]
+    
+    print(f"Ground state energy: {ground_energy:.6f} Ha")
+    print(f"Ground state has {ground_state.num_qubits} qubits")
+    
+    # Generate measurement dataset
+    generator = MeasurementDatasetGenerator(qubit_op, ground_state)
+    
+    # Generate 10,000 measurements
+    dataset = generator.generate_dataset(n_measurements=10000)
+    
+    # Save to file
+    generator.save_dataset(dataset, "beh2_measurements.txt")
     
     return generator, dataset
 
