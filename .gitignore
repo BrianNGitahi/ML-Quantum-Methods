@@ -79,3 +79,4 @@ docs/.doctrees/
 *.tmp
 tmp/
 temp/
+Scripts/*.npz
