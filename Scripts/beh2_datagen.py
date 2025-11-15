@@ -79,6 +79,7 @@ def MeasurementRotationFromString(basis_string):
     - X: Hadamard (rotation to X eigenbasis)
     - Y: S†H (rotation to Y eigenbasis)
     """
+    
     H_gate = np.array([[1, 1], [1, -1]], dtype=complex) / np.sqrt(2)
     S_dag = np.array([[1, 0], [0, -1j]], dtype=complex)
     U_Y = S_dag @ H_gate
@@ -106,7 +107,6 @@ def BuildBases(hilbert, basis_strings):
     """
     Build explicit LocalOperator objects for measurement bases.
     basis_strings: array of strings like ['XIYIZI', 'ZZIIIZ', ...]
-    
 
     """
     base_ops = []

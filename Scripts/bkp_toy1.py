@@ -130,9 +130,9 @@ def apply_measurement_rotation(state, basis):
             # Rotation to X basis: Hadamard
             H_gate = np.array([[1, 1], [1, -1]], dtype=complex) / np.sqrt(2)
             rotation_matrices.append(H_gate)
-        elif b == 'Y':
+        elif b == 'Y': ## CORRECT VERSION NOW -- HAD THE NETKET ERROR HERE ALSO
             # Rotation to Y basis
-            Y_rot = np.array([[1, -1j], [1, 1j]], dtype=complex) / np.sqrt(2)
+            Y_rot = np.array([[1, 1], [-1j, 1j]], dtype=complex) / np.sqrt(2)
             rotation_matrices.append(Y_rot)
     
     U = tensor_product(rotation_matrices)

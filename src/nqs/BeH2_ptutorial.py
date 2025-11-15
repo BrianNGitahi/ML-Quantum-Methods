@@ -145,6 +145,39 @@ def load_bases(filename: str) -> list:
     
     return Us
 
+def MeasurementRotationFromString(basis_string):
+    """
+    Convert basis string to rotation operator matrix for measurements.
+    
+    For measurement bases, we need rotation unitaries, not Pauli operators:
+    - I or Z: Identity (no rotation, measure in computational basis)
+    - X: Hadamard (rotation to X eigenbasis)
+    - Y: S†H (rotation to Y eigenbasis)
+    """
+    
+    H_gate = np.array([[1, 1], [1, -1]], dtype=complex) / np.sqrt(2)
+    S_dag = np.array([[1, 0], [0, -1j]], dtype=complex)
+    U_Y = S_dag @ H_gate ## -- GIVES CORRECT ONE -- NETKET'S HAD AN ERROR HERE
+    
+    rotation_map = {
+        'I': I,
+        'Z': I,      # No rotation for Z basis
+        'X': H_gate, # Hadamard for X basis
+        'Y': U_Y     # S†H for Y basis
+    }
+    
+    OpList = []
+    Sites = []
+    
+    for k, char in enumerate(basis_string):
+        if char in rotation_map:
+            OpList.append(rotation_map[char])
+            Sites.append(k)
+        else:
+            raise ValueError(f"Unknown basis character: {char}")
+    
+    return Sites, reduce(np.kron, OpList)
+
 
 # Function to build the base operators properly -- SAVIOUR RIGHT HERE!
 def BuildBases(hilbert,bases_array):
@@ -152,7 +185,7 @@ def BuildBases(hilbert,bases_array):
     
     for basis_string in bases_array:
         basis_string = str(basis_string)
-        sites,operator = OperatorFromString(basis_string)
+        sites,operator = MeasurementRotationFromString(basis_string)
         base_operator = nk.operator.LocalOperator(hilbert,operator,sites)
         base_ops.append(base_operator)
     return np.array(base_ops,dtype=object)
