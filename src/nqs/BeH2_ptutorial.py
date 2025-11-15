@@ -91,11 +91,10 @@ def BuildHamiltonian(N,hilbert,pauli_path,interactions_path):
                                                                                   
     hamiltonian = nk.operator.LocalOperator(hilbert, 0.0)                                                                              
     for h in range(0,len(pauli)):                                                                                           
-
         # treat Identity ops the same as other ops                                                                   
         sites,operator = OperatorFromString(pauli[h])                         
         h_term = interactions[h]*operator
-        hamiltonian = hamiltonian + nk.operator.LocalOperator(hilbert,h_term,sites)        
+        hamiltonian = hamiltonian + nk.operator.LocalOperator(hilbert,h_term,sites)       
             
     return hamiltonian 
 
@@ -146,3 +145,14 @@ def load_bases(filename: str) -> list:
     
     return Us
 
+
+# Function to build the base operators properly -- SAVIOUR RIGHT HERE!
+def BuildBases(hilbert,bases_array):
+    base_ops = []
+    
+    for basis_string in bases_array:
+        basis_string = str(basis_string)
+        sites,operator = OperatorFromString(basis_string)
+        base_operator = nk.operator.LocalOperator(hilbert,operator,sites)
+        base_ops.append(base_operator)
+    return np.array(base_ops,dtype=object)
