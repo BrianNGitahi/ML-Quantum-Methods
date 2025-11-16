@@ -157,7 +157,7 @@ def MeasurementRotationFromString(basis_string):
     
     H_gate = np.array([[1, 1], [1, -1]], dtype=complex) / np.sqrt(2)
     S_dag = np.array([[1, 0], [0, -1j]], dtype=complex)
-    U_Y = S_dag @ H_gate ## -- GIVES CORRECT ONE -- NETKET'S HAD AN ERROR HERE
+    U_Y = H_gate @ S_dag
     
     rotation_map = {
         'I': I,
