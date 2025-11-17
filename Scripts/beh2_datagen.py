@@ -37,7 +37,7 @@ def apply_measurement_rotation(state, basis_string):
         elif base == 'X':
             rotation_matrices.append(H_gate)
         elif base == 'Y':
-            rotation_matrices.append(S_dag @ H_gate)
+            rotation_matrices.append(H_gate @ S_dag)
         else:
             raise ValueError(f"Unknown basis character: {base}")
     
@@ -82,7 +82,7 @@ def MeasurementRotationFromString(basis_string):
     
     H_gate = np.array([[1, 1], [1, -1]], dtype=complex) / np.sqrt(2)
     S_dag = np.array([[1, 0], [0, -1j]], dtype=complex)
-    U_Y = S_dag @ H_gate
+    U_Y = H_gate @ S_dag
     
     rotation_map = {
         'I': I,
@@ -119,6 +119,44 @@ def BuildBases(hilbert, basis_strings):
     
     return np.array(base_ops, dtype=object)
 
+
+# Correction to earlier version: use * directly
+# def BuildBases(hilbert, bases_array):
+    
+#     """Build basis operators using * """
+#     H_gate = np.array([[1, 1], [1, -1]], dtype=complex)/np.sqrt(2)
+#     S_dag = np.array([[1, 0], [0, -1j]], dtype=complex)
+#     U_Y = H_gate @ S_dag
+#     I_matrix = np.eye(2, dtype=complex)
+    
+#     base_ops = []
+    
+#     print("used new bb function")
+    
+#     for basis_string in bases_array:
+#         basis_string = str(basis_string)
+        
+#         localop = None
+#         for j in range(len(basis_string)):
+            
+#             if basis_string[j] == 'X':
+#                 op = nk.operator.LocalOperator(hilbert, H_gate, [j])
+#             elif basis_string[j] == 'Y':
+#                 op = nk.operator.LocalOperator(hilbert, U_Y, [j])
+#             elif basis_string[j] in ['Z', 'I']:
+#                 op = nk.operator.LocalOperator(hilbert, I_matrix, [j])  # Identity for both
+#             else:
+#                 continue
+            
+#             if localop is None:
+#                 localop = op
+#             else:
+#                 localop = localop * op
+        
+#         base_ops.append(localop)
+    
+#     return np.array(base_ops, dtype=object)
+
 def generate_beh2_measurement_dataset(
     ground_state,
     pauli_strings,
@@ -150,21 +188,23 @@ def generate_beh2_measurement_dataset(
     print(f"  Hamiltonian terms: {len(pauli_strings)}")
     print(f"  Target samples: {n_samples:,}")
     
-    # Filter out identity terms (empty or all I's)
-    non_identity_terms = []
+    # Convert I's to Z's in all Pauli strings
+    modified_terms = []
     for pauli, coeff in zip(pauli_strings, coefficients):
         pauli_str = str(pauli)
-        # Skip if empty or all I's
-        if len(pauli_str) > 0 and not all(c == 'I' for c in pauli_str):
-            non_identity_terms.append(pauli_str)
-        elif len(pauli_str) == 0:
+        # Skip if empty
+        if len(pauli_str) == 0:
             print(f"  Skipping empty Pauli term with coefficient {coeff}")
+            continue
+        # Replace all I's with Z's
+        modified_str = pauli_str.replace('I', 'Z')
+        modified_terms.append(modified_str)
     
-    print(f"  Non-identity terms: {len(non_identity_terms)}")
-    print(f"  Unique Pauli terms: {len(set(non_identity_terms))}")
+    print(f"  Modified terms (I->Z): {len(modified_terms)}")
+    print(f"  Unique Pauli terms: {len(set(modified_terms))}")
     
-    if len(non_identity_terms) == 0:
-        raise ValueError("No non-identity Pauli terms found!")
+    if len(modified_terms) == 0:
+        raise ValueError("No valid Pauli terms found!")
     
     # Generate measurement samples
     bitstrings = []
@@ -174,7 +214,7 @@ def generate_beh2_measurement_dataset(
     print(f"\nGenerating {n_samples:,} measurement samples...")
     for i in range(n_samples):
         # Uniformly sample a Pauli term
-        basis_string = np.random.choice(non_identity_terms)
+        basis_string = np.random.choice(modified_terms)
         basis_counter[basis_string] += 1
         
         # Apply rotation and sample
@@ -201,7 +241,7 @@ def generate_beh2_measurement_dataset(
     print(f"  Average samples per basis: {n_samples / unique_bases:.1f}")
     
     # Check coverage
-    expected_unique = len(set(non_identity_terms))
+    expected_unique = len(set(modified_terms))
     if unique_bases < expected_unique:
         missing = expected_unique - unique_bases
         print(f"  ⚠ Warning: Missing {missing} basis types (expected {expected_unique})")
@@ -257,7 +297,7 @@ if __name__ == "__main__":
         psi0,
         pauli_strings,
         coefficients,
-        n_samples=128000,
+        n_samples=256000,
         seed=42
     )
     
@@ -267,7 +307,7 @@ if __name__ == "__main__":
     # Build explicit LocalOperator objects for bases
     print("\n" + "="*60)
     print("Building explicit basis operators...")
-    hilbert = nk.hilbert.Spin(s=0.5, N=n_qubits)
+    hilbert = nk.hilbert.Qubit(N=n_qubits)
     basis_operators = BuildBases(hilbert, basis_strings)
     print(f"  ✓ Created {len(basis_operators)} basis operators")
     
