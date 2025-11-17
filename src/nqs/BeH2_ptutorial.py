@@ -163,7 +163,7 @@ def MeasurementRotationFromString(basis_string):
         'I': I,
         'Z': I,      # No rotation for Z basis
         'X': H_gate, # Hadamard for X basis
-        'Y': U_Y     # S†H for Y basis
+        'Y': U_Y     # S†H for Y basis (flip order)
     }
     
     OpList = []
@@ -180,12 +180,50 @@ def MeasurementRotationFromString(basis_string):
 
 
 # Function to build the base operators properly -- SAVIOUR RIGHT HERE!
-def BuildBases(hilbert,bases_array):
+# def BuildBases(hilbert,bases_array):
+#     base_ops = []
+    
+#     for basis_string in bases_array:
+#         basis_string = str(basis_string)
+#         sites,operator = MeasurementRotationFromString(basis_string)
+#         base_operator = nk.operator.LocalOperator(hilbert,operator,sites)
+#         base_ops.append(base_operator)
+#     return np.array(base_ops,dtype=object)
+
+
+# Correction to earlier version: use * directly
+def BuildBases(hilbert, bases_array):
+    
+    """Build basis operators using * """
+    H_gate = np.array([[1, 1], [1, -1]], dtype=complex)/np.sqrt(2)
+    S_dag = np.array([[1, 0], [0, -1j]], dtype=complex)
+    U_Y = H_gate @ S_dag
+    I_matrix = np.eye(2, dtype=complex)
+    
     base_ops = []
+    
+    print("used new bb function")
     
     for basis_string in bases_array:
         basis_string = str(basis_string)
-        sites,operator = MeasurementRotationFromString(basis_string)
-        base_operator = nk.operator.LocalOperator(hilbert,operator,sites)
-        base_ops.append(base_operator)
-    return np.array(base_ops,dtype=object)
+        
+        localop = None
+        for j in range(len(basis_string)):
+            
+            if basis_string[j] == 'X':
+                op = nk.operator.LocalOperator(hilbert, H_gate, [j])
+            elif basis_string[j] == 'Y':
+                op = nk.operator.LocalOperator(hilbert, U_Y, [j])
+            elif basis_string[j] in ['Z', 'I']:
+                op = nk.operator.LocalOperator(hilbert, I_matrix, [j])  # Identity for both
+            else:
+                continue
+            
+            if localop is None:
+                localop = op
+            else:
+                localop = localop * op
+        
+        base_ops.append(localop)
+    
+    return np.array(base_ops, dtype=object)
